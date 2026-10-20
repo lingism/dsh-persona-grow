@@ -176,6 +176,28 @@ maxChars  ≈ characters × 2               // 留一半给以后生长
 - 整理完调 `persona_care_done` 重置计时；不调就继续提醒
 - `manifest.json` 是全局的：任意会话里看到过期都算数
 
+### 归档（`persona_archive`）
+
+人格条目越积越多，注入预算总有不够的一天。归档就是**把沉底的条目从注入层搬进经历层**：
+
+```
+traits.jsonl  移除       → 不再占提示词预算
+experiences/  追加一条   → persona_recall 用关键词仍能搜回
+```
+
+调用方式：
+
+```js
+persona_archive({ dryRun: true })                       // 先看候选
+persona_archive()                                        // 按默认条件搬（≤2星 且 60 天未提）
+persona_archive({ belowStrength: 3, days: 90 })          // 放宽条件
+persona_archive({ ids: ["pg-0021", "pg-0009"] })         // 点名搬
+```
+
+- `locked` 条目（身份锚点）**永不归档**，点名也不搬
+- 搬之前会在 `persona-backups/<时间戳>-archive/` 留一份 traits 原文
+- 归档后正文里会带注脚（原 id / 类别 / 写入强度），以后能追溯
+
 ```yaml
 - id: persona-grow
   config:
@@ -194,6 +216,7 @@ maxChars  ≈ characters × 2               // 留一半给以后生长
 | `persona_status` | 生长状态：条目数、衰减数、判断成功/失败、最后错误 |
 | `persona_digest` | 手动对当前轮跑一次判断，补漏或验证逻辑 |
 | `persona_care_done` | 标记整理已完成，重置 `careEveryDays` 计时 |
+| `persona_archive` | 把沉底条目搬进经历层：不再注入，`persona_recall` 仍可搜回 |
 
 ## 注入的取舍
 

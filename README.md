@@ -87,7 +87,7 @@ tar -czf soul.tar.gz -C ~/.dsh persona
 tar -xzf soul.tar.gz -C ~/.dsh/
 
 # 3) 新机器：装插件（用 GitHub 版，别用私藏 tgz）
-dsh plugin --profile desktop add github:<你的账号>/dsh-persona-grow
+dsh plugin --profile desktop add github:lingism/dsh-persona-grow
 ```
 
 然后重启 dsh。插件启动时读 `manifest.json`，条目和经历直接回到提示词里。
@@ -324,7 +324,7 @@ persona_enable()    // 从备份还原 → 清掉标记
 
 ```sh
 # GitHub 版（推荐，更新也方便）
-dsh plugin --profile desktop add github:<你的账号>/dsh-persona-grow
+dsh plugin --profile desktop add github:lingism/dsh-persona-grow
 
 # 或者本地 tgz
 dsh plugin --profile desktop add file:D:/path/to/dsh-persona-grow-0.4.0.tgz

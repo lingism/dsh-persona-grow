@@ -217,7 +217,7 @@ window.__ModuleLoader__.load({
           h('div', { style: S.cardTitle }, '当前灵魂'),
           h('div', { style: S.row },
             h('span', { style: S.badge }, state.name || state.current),
-            h('span', { style: S.muted }, `档案 ${state.current} · ${state.currentEntries} 条`),
+            h('span', { style: S.muted }, `${state.currentEntries} 条`),
             state.disabled ? h('span', { style: S.warn }, '已禁用（档案为空）') : null,
           ),
           h('div', { style: S.muted }, state.dir || ''),
@@ -251,7 +251,7 @@ window.__ModuleLoader__.load({
               },
             }, '新建灵魂'),
           ),
-          h('div', { style: S.muted }, '新建时沿用当前身份文件当模板，条目从零开始；建好后在下拉里选它就能切过去。'),
+          h('div', { style: S.muted }, '新建的灵魂只有名字、没有形象和性格——其余设定在对话里慢慢长出来。'),
         ),
 
         h('div', { style: S.card },

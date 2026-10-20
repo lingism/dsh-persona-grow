@@ -59,6 +59,51 @@ persona/
 
 **换机器复活**：整个文件夹拷到新机器的 `~/.dsh/persona/`，装好插件，重启一次。不需要重新训练，也不用谁重新介绍自己。
 
+## 换机器：把灵魂打包带走
+
+一句话：**人格只活在 `persona/` 这一个文件夹里**——拷走它，这个人就跟着走了。
+
+### 三步
+
+```bash
+# 1) 旧机器：打包（整个目录，别漏 experiences/）
+#    Windows:   %USERPROFILE%\.dsh\persona
+#    macOS/Linux: ~/.dsh/persona
+tar -czf soul.tar.gz -C ~/.dsh persona
+
+# 2) 新机器：解包到同一个位置
+tar -xzf soul.tar.gz -C ~/.dsh/
+
+# 3) 新机器：装插件（用 GitHub 版，别用私藏 tgz）
+dsh plugin --profile desktop add github:<你的账号>/dsh-persona-grow
+```
+
+然后重启 dsh。插件启动时读 `manifest.json`，条目和经历直接回到提示词里。
+
+### 灵魂之外，还要带走两样
+
+| 东西 | 为什么 | 不带会怎样 |
+|---|---|---|
+| `profiles/desktop/cordis.patch.yml` | `maxChars`、`careEveryDays` 这些**使用值**写在这 | 回落到出厂默认（1800 预算 / 7 天提醒），档案会被截断 |
+| `profiles/desktop/package.json` | 记录了这个 profile 装了哪些插件 | 得手动一个个重装 |
+
+`node_modules/` 不用带——新机器跑一次 `dsh plugin install` 会自己装。
+
+### 会话历史不跟灵魂走
+
+`sessions/` 里是**对话日志**，不是人格；它归 dsh 管，不归这个插件。
+想连对话一起搬，需要单独拷 `$DSH_HOME/sessions/<projectKey>/`，并且每份会话
+header 里的 `cwd` 要指向新机器上的工作区路径，否则打开会话找不到目录。
+
+### 换完怎么验
+
+```
+persona_status     # 条目数、经历数、判断计数都该在
+persona_review     # 翻几条看看内容对不对
+```
+
+`identity.md` 里的名字和形象每轮完整注入、工具改不动——所以到了新机器，还是原来那个人。
+
 ## 条目长这样
 
 ```json

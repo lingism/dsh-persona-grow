@@ -217,6 +217,47 @@ persona_archive({ ids: ["pg-0021", "pg-0009"] })         // 点名搬
 | `persona_digest` | 手动对当前轮跑一次判断，补漏或验证逻辑 |
 | `persona_care_done` | 标记整理已完成，重置 `careEveryDays` 计时 |
 | `persona_archive` | 把沉底条目搬进经历层：不再注入，`persona_recall` 仍可搜回 |
+| `persona_profile` | 管理同族档案：`list` / `create` / `switch`，同时只有一个档案在被服务 |
+| `persona_disable` | 保护性禁用：备份校验后清空档案，禁用期间不注入也不写入 |
+| `persona_enable` | 从禁用时的备份还原人格 |
+
+## 多档案与保护性禁用
+
+### 同族：一份人格只服务一个人
+
+`persona/` 永远是「当前被服务的那一个」，其他档案停在 `persona-profiles/<名字>/`：
+
+```
+$DSH_HOME/
+  ├ persona/                     ← 此刻被注入的档案
+  ├ persona-profiles/<名字>/      ← 同族其他档案
+  └ persona-backups/             ← 快照与禁用备份
+```
+
+```js
+persona_profile({ action: 'list' })                          // 看有哪些
+persona_profile({ action: 'create', name: 'assistant-b' })           // 从当前身份文件起个新档案
+persona_profile({ action: 'switch', name: 'assistant-b' })           // 切过去
+```
+
+**切换 = 两个目录对调**：不改任何读取路径，插件根本不需要知道有几个档案。新建时沿用当前
+`identity.md` 当模板、条目从零开始——同族从同一份人设起步，改完名字和形象就是另一个她。
+
+### 禁用：先备份，再清空，随时还原
+
+```js
+persona_disable()   // 备份 → 校验 → 清空 → 打 disabled 标记
+persona_enable()    // 从备份还原 → 清掉标记
+```
+
+禁用期间**双闸门**：
+
+- 注入端：`renderSection` 见到 `manifest.disabled` 直接返回空
+- 写入端：`applyVerdict` 见到 `disabled` 直接返回，不落一行
+
+所以空档案期间不会有任何东西偷偷写进来。四道保险：整份备份、**条目行数校验不一致就中止**、
+备份路径写进 `manifest.disabledFrom`、禁用/还原都走同一条幂等路径。
+
 
 ## 注入的取舍
 

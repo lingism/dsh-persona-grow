@@ -194,16 +194,16 @@ maxChars  ≈ characters × 2               // 留一半给以后生长
 
 ### 待办（`[待办]` 前缀）
 
-主人交代要办的事，会让经历标题以 `[待办] ` 开头写进经历：
+用户交代要办的事，会让经历标题以 `[待办] ` 开头写进经历：
 
 ```json
-{"id":"exp-...","title":"[待办] 灵魂插件收尾还剩 5 项","text":"...","tags":["主人交代"],"at":"..."}
+{"id":"exp-...","title":"[待办] 灵魂插件收尾还剩 5 项","text":"...","tags":["用户交代"],"at":"..."}
 ```
 
 注入时**只在「最近三条」经历里生效**：
 
-- 最近三条里有 `[待办]` → 单独成段「### 待办（主人交代过，要主动提起，别等人问）」，前缀显示时剥掉
-- 更早的 `[待办]` → 自动降级成普通经历，不主动提，等主人自己问
+- 最近三条里有 `[待办]` → 单独成段「### 待办（{userLabel}交代过，要主动提起，别等人问）」，前缀显示时剥掉；段名里的 {userLabel} 跟随配置里的 `userLabel`（默认「用户」）
+- 更早的 `[待办]` → 自动降级成普通经历，不主动提，等你主动问
 
 这样不需要"判断事情办没办完"——待办滑出最近三条就自然过期，不靠任何工具去改标题。
 想提前收口，等它滑出去就行，或者用 `persona_forget` 删掉。
@@ -324,7 +324,7 @@ persona_enable()    // 从备份还原 → 清掉标记
 
 ```sh
 # GitHub 版（推荐，更新也方便）
-dsh plugin --profile desktop add github:lingism/dsh-persona-grow
+dsh plugin --profile desktop add github:<你的账号>/dsh-persona-grow
 
 # 或者本地 tgz
 dsh plugin --profile desktop add file:D:/path/to/dsh-persona-grow-0.4.0.tgz

@@ -7,7 +7,7 @@
 | 判断 | 去哪 | 结果 |
 |---|---|---|
 | 出现了关于"我是谁"的新事实 | `traits.jsonl` | 下次请求就进系统提示词（常驻） |
-| 学到的是可复用的做法（操作/排障/配置） | `skills.jsonl` | 任务相关时才注入（按需） |
+| 学到的是可复用的做法（操作/排障/配置） | `skills/<领域>.jsonl` | 任务相关时才注入（按需），领域是中文名、按内容自动分 |
 | 没有人格增量，但是件难忘的事 | `experiences/YYYY-MM.md` | 标题进提示词，正文可召回 |
 | 寒暄 / 事务性操作 / 重复已知 | 丢弃 | 什么都不写 |
 
@@ -55,13 +55,19 @@ persona/
   identity.md                # 身份核心：名字 / 自称 / 形象 / 底线。每轮完整注入，工具改不到
   manifest.json              # 版本、计数、判断成功率、最后错误
   traits.jsonl               # 人格层：说话、情感、关系、性格（常驻注入）
-  skills.jsonl               # 技能层：操作经验、排障套路（任务相关才注入）
+  skills/                    # 技能层：按领域分文件，领域名由判断模型自己起（中文）
+    本体.jsonl
+    灵魂.jsonl
+    …                        # 没归好领域的落 misc.jsonl
   persona.md                 # 人读总览（分层展示），含"已推翻"历史
   experiences/
     2026-10.md               # 按月归档的经历正文
     index.jsonl              # 结构索引（召回用）
   README.md                  # 迁移说明
 ```
+
+**技能为什么按领域分文件**：一个 `skills.jsonl` 会无限膨胀，合并时也分不清哪些是同一类做法。
+按领域拆开后，「灵魂插件」和「外卖」的做法各在各家的文件里，合并、归档、删除都只动自己那个域。
 
 **换机器复活**：整个文件夹拷到新机器的 `~/.dsh/persona/`，装好插件，重启一次。不需要重新训练，也不用谁重新介绍自己。
 
@@ -86,12 +92,13 @@ dsh plugin --profile desktop add github:<你的账号>/dsh-persona-grow
 
 然后重启 dsh。插件启动时读 `manifest.json`，条目和经历直接回到提示词里。
 
-### 灵魂之外，还要带走两样
+### 灵魂之外，还要带走三样
 
 | 东西 | 为什么 | 不带会怎样 |
 |---|---|---|
 | `profiles/desktop/cordis.patch.yml` | `maxChars`、`careEveryDays` 这些**使用值**写在这 | 回落到出厂默认（1800 预算 / 7 天提醒），档案会被截断 |
 | `profiles/desktop/package.json` | 记录了这个 profile 装了哪些插件 | 得手动一个个重装 |
+| `persona-profiles/`（如果用过） | 同族其他灵魂停在在这里，不在 `persona/` 里 | 只带走当前那份，切过的其他档案丢了 |
 
 `node_modules/` 不用带——新机器跑一次 `dsh plugin install` 会自己装。
 
@@ -144,6 +151,7 @@ persona_review     # 翻几条看看内容对不对
     minChars: 60               # 低于这个长度不判断
     maxPerHour: 30             # 每小时判断次数上限
     maxChars: 1800             # 注入提示词的最大字符数（建议按实际用量 2 倍留余量，见下）
+    minStrength: 1             # 有效强度低于这个值的人格条目不注入（技能层固定 ≥2）
     decayDays: 30              # 每多少天掉一级强度
     bondDecayFactor: 2         # 关系类条目的衰减倍数（越大掉得越快）
     consolidateEvery: 20       # 每多少轮考虑一次合并
@@ -152,13 +160,15 @@ persona_review     # 翻几条看看内容对不对
     autoStrengthCap: 4         # 自动条目的强度上限
     recentExperiences: 3       # 注入几条最近经历的标题
     careEveryDays: 7           # 多少天提醒一次整理人格（只提醒，不自动改）
+    userLabel: '用户'           # 注入文本里怎么称呼对方（可改成本人的叫法）
     sectionOrder: 10300
     dir: ''                    # 空 = $DSH_HOME/persona
 ```
 
 ### `maxChars` 怎么定
 
-注入是**全量**的：条目按有效强度竞争预算位置，超出预算的低权重条目直接不进提示词。
+注入是**按强度过滤后全量**的：活条目先按有效强度排序（低于 `minStrength` 的直接不进），
+再按顺序竞争预算位置，超出预算的低权重条目沉底。技能层不走这条预算——它只注入当下相关的几条。
 默认 1800 对几十条档案就紧，建议按实际用量留一倍余量：
 
 ```js
@@ -181,6 +191,22 @@ maxChars  ≈ characters × 2               // 留一半给以后生长
 - 判断发生在"有对话的时候"，所以没有定时任务、也不受关机影响
 - 整理完调 `persona_care_done` 重置计时；不调就继续提醒
 - `manifest.json` 是全局的：任意会话里看到过期都算数
+
+### 待办（`[待办]` 前缀）
+
+主人交代要办的事，会让经历标题以 `[待办] ` 开头写进经历：
+
+```json
+{"id":"exp-...","title":"[待办] 灵魂插件收尾还剩 5 项","text":"...","tags":["主人交代"],"at":"..."}
+```
+
+注入时**只在「最近三条」经历里生效**：
+
+- 最近三条里有 `[待办]` → 单独成段「### 待办（主人交代过，要主动提起，别等人问）」，前缀显示时剥掉
+- 更早的 `[待办]` → 自动降级成普通经历，不主动提，等主人自己问
+
+这样不需要"判断事情办没办完"——待办滑出最近三条就自然过期，不靠任何工具去改标题。
+想提前收口，等它滑出去就行，或者用 `persona_forget` 删掉。
 
 ### 归档（`persona_archive`）
 
@@ -297,14 +323,19 @@ persona_enable()    // 从备份还原 → 清掉标记
 ## 安装
 
 ```sh
+# GitHub 版（推荐，更新也方便）
+dsh plugin --profile desktop add github:lingism/dsh-persona-grow
+
+# 或者本地 tgz
 dsh plugin --profile desktop add file:D:/path/to/dsh-persona-grow-0.4.0.tgz
 ```
 
 bundle 层只在启动时组合，**第一次装完要重启一次**；之后新增条目不需要重启。
+**改了插件自己的代码**（lib/ 下的 js）也要重启——运行中的进程加载的是启动那一刻的版本。
 
 ## 自测
 
-`_selftest.mjs` mock 掉 cordis ctx + llm + session，跑完整链路：自动写入、judge 是否真的看见了档案、supersede 推翻旧条目、衰减、经历写入与召回、无营养不乱写、粗筛不浪费调用、七个工具、容器自包含，以及身份锁六条（locked 删不掉 / 推不翻 / 不衰减 / grow 的 supersede 跳过 locked / 身份块排最前 / 身份正文原样注入）。共 36 条断言。
+`_selftest.mjs` mock 掉 cordis ctx + llm + session，跑完整链路：自动写入、judge 是否真的看见了档案、supersede 推翻旧条目、衰减、经历写入与召回、无营养不乱写、粗筛不浪费调用、十三个工具、容器自包含，以及身份锁六条（locked 删不掉 / 推不翻 / 不衰减 / grow 的 supersede 跳过 locked / 身份块排最前 / 身份正文原样注入）。共 36 条断言。
 
 跑之前要把 `@deepseek-ai/schemastery` 及其依赖放进 `node_modules/`（宿主里有，离线时缺）；跑完删掉，否则会造出第二份 schemastery 实例。
 

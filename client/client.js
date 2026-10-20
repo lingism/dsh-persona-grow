@@ -217,7 +217,7 @@ window.__ModuleLoader__.load({
           h('div', { style: S.cardTitle }, '当前灵魂'),
           h('div', { style: S.row },
             h('span', { style: S.badge }, state.name || state.current),
-            h('span', { style: S.muted }, `${state.currentEntries} 条`),
+            h('span', { style: S.muted }, `人格条目 ${state.currentEntries}`),
             state.disabled ? h('span', { style: S.warn }, '已禁用（档案为空）') : null,
           ),
           h('div', { style: S.muted }, state.dir || ''),

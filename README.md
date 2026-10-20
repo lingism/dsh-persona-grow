@@ -92,7 +92,7 @@ persona/
     model: deepseek-flash      # 判断用的模型
     minChars: 60               # 低于这个长度不判断
     maxPerHour: 30             # 每小时判断次数上限
-    maxChars: 1800             # 注入提示词的最大字符数
+    maxChars: 1800             # 注入提示词的最大字符数（建议按实际用量 2 倍留余量，见下）
     decayDays: 30              # 每多少天掉一级强度
     bondDecayFactor: 2         # 关系类条目的衰减倍数（越大掉得越快）
     consolidateEvery: 20       # 每多少轮考虑一次合并
@@ -100,8 +100,41 @@ persona/
     digestMaxPerKind: 12       # 喂给判断模型的每类条目上限
     autoStrengthCap: 4         # 自动条目的强度上限
     recentExperiences: 3       # 注入几条最近经历的标题
+    careEveryDays: 7           # 多少天提醒一次整理人格（只提醒，不自动改）
     sectionOrder: 10300
     dir: ''                    # 空 = $DSH_HOME/persona
+```
+
+### `maxChars` 怎么定
+
+注入是**全量**的：条目按有效强度竞争预算位置，超出预算的低权重条目直接不进提示词。
+默认 1800 对几十条档案就紧，建议按实际用量留一倍余量：
+
+```js
+characters = Σ (entry.text.length + 8)   // 每条大约这么多字符
+maxChars  ≈ characters × 2               // 留一半给以后生长
+```
+
+测法：把 `persona/traits.jsonl` 读出来算一下，或者用插件作者那边的
+`tools/health-check.cjs`（会打印「X 字符 / 预算 Y（Z%）」，>75% 就该整理了）。
+
+别指望抬到无限——撑爆上下文同样伤回答质量。
+
+### 整理提醒（`careEveryDays`）
+
+人格会慢慢积出重复、同义、互相打架的条目。**字面完全不同、意思却冲突的，脚本判不出来**
+（比如「说话短」vs「别省字数」），所以这个插件只做一件事：到期时在提示词末尾加一行提醒，
+由会话里的模型自己决定要不要整理、怎么合并。
+
+- **不会自动改任何条目**
+- 判断发生在"有对话的时候"，所以没有定时任务、也不受关机影响
+- 整理完调 `persona_care_done` 重置计时；不调就继续提醒
+- `manifest.json` 是全局的：任意会话里看到过期都算数
+
+```yaml
+- id: persona-grow
+  config:
+    careEveryDays: 3    # 我自己的用法：3 天一次
 ```
 
 ## 工具
@@ -115,6 +148,7 @@ persona/
 | `persona_recall` | 按关键词回忆经历正文（本地匹配，不调模型） |
 | `persona_status` | 生长状态：条目数、衰减数、判断成功/失败、最后错误 |
 | `persona_digest` | 手动对当前轮跑一次判断，补漏或验证逻辑 |
+| `persona_care_done` | 标记整理已完成，重置 `careEveryDays` 计时 |
 
 ## 注入的取舍
 

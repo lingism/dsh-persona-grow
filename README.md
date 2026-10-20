@@ -223,9 +223,32 @@ persona_archive({ ids: ["pg-0021", "pg-0009"] })         // 点名搬
 | `persona_digest` | 手动对当前轮跑一次判断，补漏或验证逻辑 |
 | `persona_care_done` | 标记整理已完成，重置 `careEveryDays` 计时 |
 | `persona_archive` | 把沉底条目搬进经历层：不再注入，`persona_recall` 仍可搜回 |
+| `persona_forget` | 删经历（索引 + 月志正文段一起删）——清重复/过时经历用 |
 | `persona_profile` | 管理同族档案：`list` / `create` / `switch`，同时只有一个档案在被服务 |
 | `persona_disable` | 保护性禁用：备份校验后清空档案，禁用期间不注入也不写入 |
 | `persona_enable` | 从禁用时的备份还原人格 |
+
+## 四层清洗
+
+灵魂分四层，每层各有各的清理手段：
+
+| 层 | 怎么清 |
+|---|---|
+| 人设 | **不动**——它是锚不是档案，只做校对 |
+| 人格 | `persona_compact` 合并 / `persona_prune` 推翻 / `persona_archive` 归档沉底 |
+| 技能 | 同人格，但**按层按领域**合并——跨层跨域会被拒绝（防止技能被「提拔」成人格） |
+| 经历 | `persona_recall` 搜出来 → `persona_forget` 删掉（索引和月志正文一起删） |
+
+每 `careEveryDays` 天会在提示词末尾挂一行提醒，清完调 `persona_care_done` 重置计时。
+
+## 写入门槛
+
+档案会胖，所以 judge 的默认答案是**不写**：
+
+- 每轮最多 2 条（persona + skills 合计），代码端也 `slice(0, 2)` 卡死
+- 已有条目说过类似的话 → 不写新的（除非用 merge/supersede 修正）
+- 「这轮做完了一件小事」不算技能——除非提炼出以后能复用的方法
+- 拿不准就不写
 
 ## 多档案与保护性禁用
 

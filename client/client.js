@@ -84,27 +84,82 @@ window.__ModuleLoader__.load({
         borderRadius: '8px',
         background: 'var(--dsw-alias-state-success-secondary)',
       },
+      fieldLabel: { fontSize: '13px', minWidth: '110px', color: 'var(--dsw-alias-label-secondary)' },
+      input: {
+        font: 'inherit',
+        fontSize: '13px',
+        width: '110px',
+        padding: '3px 8px',
+        borderRadius: '6px',
+        border: '0.5px solid var(--dsw-alias-border-l2)',
+        background: 'var(--dsw-alias-bg-l1)',
+        color: 'var(--dsw-alias-label-primary)',
+      },
     }
 
     function PersonaSection() {
       const h = react.createElement
       const [state, setState] = react.useState(null)
+      const [config, setConfig] = react.useState(null)
+      const [draft, setDraft] = react.useState({})
       const [busy, setBusy] = react.useState(false)
       const [error, setError] = react.useState('')
       const [note, setNote] = react.useState('')
 
       const load = react.useCallback(() => {
-        fetch(api('/persona-grow/state'))
-          .then((res) => res.json())
-          .then((data) => {
-            if (data.error) throw new Error(data.error)
-            setState(data)
+        Promise.all([
+          fetch(api('/persona-grow/state')).then((res) => res.json()),
+          fetch(api('/persona-grow/config')).then((res) => res.json()),
+        ])
+          .then(([s, c]) => {
+            if (s.error) throw new Error(s.error)
+            if (c.error) throw new Error(c.error)
+            setState(s)
+            setConfig(c)
             setError('')
           })
           .catch((err) => setError(String(err && err.message ? err.message : err)))
       }, [])
 
       react.useEffect(() => { load() }, [load])
+
+      const saveConfig = (key, value) => {
+        setBusy(true)
+        setError('')
+        setNote('')
+        fetch(api('/persona-grow/config'), {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ key, value }),
+        })
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.error) throw new Error(data.error)
+            setNote(`已保存 ${key} = ${data.value}`)
+            load()
+          })
+          .catch((err) => setError(String(err && err.message ? err.message : err)))
+          .finally(() => setBusy(false))
+      }
+
+      const configField = (key, label, hint) => {
+        const current = config && config[key] !== undefined ? String(config[key]) : ''
+        return h('div', { key, style: S.row },
+          h('span', { style: S.fieldLabel }, label),
+          h('input', {
+            style: S.input,
+            value: draft[key] !== undefined ? draft[key] : current,
+            onChange: (event) => setDraft({ ...draft, [key]: event.target.value }),
+          }),
+          h('button', {
+            type: 'button',
+            style: S.btn,
+            disabled: busy,
+            onClick: () => saveConfig(key, draft[key] !== undefined ? draft[key] : current),
+          }, '保存'),
+          hint ? h('span', { style: S.muted }, hint) : null,
+        )
+      }
 
       const post = (path, body) => {
         setBusy(true)
@@ -165,6 +220,16 @@ window.__ModuleLoader__.load({
                 onClick: () => post('/persona-grow/switch', { name: item.name }),
               }, '切换'),
             )),
+        ),
+        h('div', { style: S.card },
+          h('div', { style: S.cardTitle }, '配置'),
+          h('p', { style: S.intro }, '改完点旁边的保存；写进 profile 的 patch 并立即生效。'),
+          configField('maxChars', '注入预算 maxChars', '字符数'),
+          configField('careEveryDays', '整理提醒 careEveryDays', '天'),
+          configField('recentExperiences', '最近经历条数', '条'),
+          configField('decayDays', '衰减 decayDays', '天/级'),
+          configField('minStrength', '最低强度', '1-5'),
+          configField('userLabel', '称呼 userLabel', '注入文案里的称呼'),
         ),
         h('div', { style: S.card },
           h('div', { style: S.cardTitle }, '保护性禁用'),

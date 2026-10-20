@@ -1,7 +1,7 @@
 /**
  * 人格设置面板（浏览器侧）。
  *
- * 注册进 Settings 的「人格」区：列出当前档案、同族其他档案、禁用/还原按钮。
+ * 注册进 Settings 的「人格」区：当前灵魂、下拉切换、新建灵魂、配置项、保护性禁用。
  * 数据走 host 注册的 /persona-grow/* HTTP API。
  */
 window.__ModuleLoader__.load({
@@ -26,14 +26,14 @@ window.__ModuleLoader__.load({
         padding: '12px 14px',
         display: 'flex',
         flexDirection: 'column',
-        gap: '8px',
+        gap: '10px',
       },
       cardTitle: { fontSize: '13px', fontWeight: 600, color: 'var(--dsw-alias-label-secondary)' },
       row: { display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' },
       badge: {
         fontSize: '13px',
         fontWeight: 600,
-        padding: '2px 8px',
+        padding: '2px 10px',
         borderRadius: '999px',
         background: 'var(--dsw-alias-state-business-primary)',
         color: '#fff',
@@ -84,7 +84,17 @@ window.__ModuleLoader__.load({
         borderRadius: '8px',
         background: 'var(--dsw-alias-state-success-secondary)',
       },
-      fieldLabel: { fontSize: '13px', minWidth: '110px', color: 'var(--dsw-alias-label-secondary)' },
+      select: {
+        font: 'inherit',
+        fontSize: '13px',
+        padding: '3px 8px',
+        borderRadius: '6px',
+        border: '0.5px solid var(--dsw-alias-border-l2)',
+        background: 'var(--dsw-alias-bg-l1)',
+        color: 'var(--dsw-alias-label-primary)',
+        minWidth: '180px',
+      },
+      fieldLabel: { fontSize: '13px', minWidth: '120px', color: 'var(--dsw-alias-label-secondary)' },
       input: {
         font: 'inherit',
         fontSize: '13px',
@@ -95,13 +105,25 @@ window.__ModuleLoader__.load({
         background: 'var(--dsw-alias-bg-l1)',
         color: 'var(--dsw-alias-label-primary)',
       },
+      fieldHint: { fontSize: '12px', color: 'var(--dsw-alias-label-tertiary)', lineHeight: '18px' },
     }
+
+    /** 每一项配置：说明就是给人看的用途解释。 */
+    const CONFIG_FIELDS = [
+      { key: 'maxChars', label: '注入预算', unit: '字符', hint: '每轮把人格与经历拼进提示词的字数上限。调大能记住更多，但每轮多花 token；信息超了会优先从弱条目开始砍。' },
+      { key: 'careEveryDays', label: '整理提醒', unit: '天', hint: '隔多少天在对话里挂一行提醒你整理人格。到了天数我提醒，真正动手的还是你。' },
+      { key: 'recentExperiences', label: '最近经历条数', unit: '条', hint: '每轮注入最近几条经历的标题（正文不注入，靠 persona_recall 按关键词翻）。' },
+      { key: 'decayDays', label: '衰减天数', unit: '天/级', hint: '一条条目多少天没被再次印证就降一级强度；被印证会回升。降到底就被归档。' },
+      { key: 'minStrength', label: '最低强度', unit: '1-5', hint: '强度低于这个值的条目不注入。1 表示全都注入，5 表示只留最硬的。' },
+      { key: 'userLabel', label: '称呼', unit: '文字', hint: '注入文案里怎么称呼你。默认「用户」，你可以改成习惯的叫法。' },
+    ]
 
     function PersonaSection() {
       const h = react.createElement
       const [state, setState] = react.useState(null)
       const [config, setConfig] = react.useState(null)
       const [draft, setDraft] = react.useState({})
+      const [newName, setNewName] = react.useState('')
       const [busy, setBusy] = react.useState(false)
       const [error, setError] = react.useState('')
       const [note, setNote] = react.useState('')
@@ -123,45 +145,7 @@ window.__ModuleLoader__.load({
 
       react.useEffect(() => { load() }, [load])
 
-      const saveConfig = (key, value) => {
-        setBusy(true)
-        setError('')
-        setNote('')
-        fetch(api('/persona-grow/config'), {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ key, value }),
-        })
-          .then((res) => res.json())
-          .then((data) => {
-            if (data.error) throw new Error(data.error)
-            setNote(`已保存 ${key} = ${data.value}`)
-            load()
-          })
-          .catch((err) => setError(String(err && err.message ? err.message : err)))
-          .finally(() => setBusy(false))
-      }
-
-      const configField = (key, label, hint) => {
-        const current = config && config[key] !== undefined ? String(config[key]) : ''
-        return h('div', { key, style: S.row },
-          h('span', { style: S.fieldLabel }, label),
-          h('input', {
-            style: S.input,
-            value: draft[key] !== undefined ? draft[key] : current,
-            onChange: (event) => setDraft({ ...draft, [key]: event.target.value }),
-          }),
-          h('button', {
-            type: 'button',
-            style: S.btn,
-            disabled: busy,
-            onClick: () => saveConfig(key, draft[key] !== undefined ? draft[key] : current),
-          }, '保存'),
-          hint ? h('span', { style: S.muted }, hint) : null,
-        )
-      }
-
-      const post = (path, body) => {
+      const post = (path, body, successNote) => {
         setBusy(true)
         setError('')
         setNote('')
@@ -173,11 +157,16 @@ window.__ModuleLoader__.load({
           .then((res) => res.json())
           .then((data) => {
             if (data.error) throw new Error(data.error)
-            setNote('完成')
+            setNote(successNote || '完成')
             load()
           })
           .catch((err) => setError(String(err && err.message ? err.message : err)))
           .finally(() => setBusy(false))
+      }
+
+      const switchTo = (name) => {
+        if (!name || (state && name === state.current)) return
+        post('/persona-grow/switch', { name }, `已切到「${name}」`)
       }
 
       if (state === null && error !== '') {
@@ -192,45 +181,85 @@ window.__ModuleLoader__.load({
       }
 
       const others = Array.isArray(state.others) ? state.others : []
+      const options = [{ value: state.current, label: `${state.name}（当前）` }]
+        .concat(others.map((item) => ({ value: item.name, label: `${item.name}（${item.entries} 条）` })))
+
+      const configField = (field) => {
+        const current = config && config[field.key] !== undefined ? String(config[field.key]) : ''
+        const value = draft[field.key] !== undefined ? draft[field.key] : current
+        return h('div', { key: field.key, style: { display: 'flex', flexDirection: 'column', gap: '4px' } },
+          h('div', { style: S.row },
+            h('span', { style: S.fieldLabel }, field.label),
+            h('input', {
+              style: S.input,
+              value,
+              onChange: (event) => setDraft({ ...draft, [field.key]: event.target.value }),
+            }),
+            h('span', { style: S.muted }, field.unit),
+            h('button', {
+              type: 'button',
+              style: S.btn,
+              disabled: busy,
+              onClick: () => post('/persona-grow/config', { key: field.key, value }, `已保存 ${field.label}`),
+            }, '保存'),
+          ),
+          h('div', { style: S.fieldHint }, field.hint),
+        )
+      }
+
       return h('div', { style: S.root },
         h('h2', { style: S.h2 }, '人格'),
-        h('p', { style: S.intro }, '同时只服务一个档案：切换就是两个目录对调，下一条消息起注入的就是她。'),
+        h('p', { style: S.intro }, '同一时刻只有一份灵魂被服务；切换就是两份灵魂的目录对调，下一条消息起生效。'),
         error ? h('div', { style: S.error }, error) : null,
         note ? h('div', { style: S.note }, note) : null,
+
         h('div', { style: S.card },
-          h('div', { style: S.cardTitle }, '当前档案'),
+          h('div', { style: S.cardTitle }, '当前灵魂'),
           h('div', { style: S.row },
-            h('span', { style: S.badge }, state.current),
-            h('span', { style: S.muted }, `${state.currentEntries} 条`),
+            h('span', { style: S.badge }, state.name || state.current),
+            h('span', { style: S.muted }, `档案 ${state.current} · ${state.currentEntries} 条`),
             state.disabled ? h('span', { style: S.warn }, '已禁用（档案为空）') : null,
           ),
           h('div', { style: S.muted }, state.dir || ''),
         ),
+
         h('div', { style: S.card },
-          h('div', { style: S.cardTitle }, `其他档案（${others.length}）`),
-          others.length === 0
-            ? h('div', { style: S.muted }, '还没有同族档案。让我在对话里用 persona_profile 建一个。')
-            : others.map((item) => h('div', { key: item.name, style: S.row },
-              h('span', { style: S.body }, item.name),
-              h('span', { style: S.muted }, `${item.entries} 条`),
-              h('button', {
-                type: 'button',
-                style: S.btnPrimary,
-                disabled: busy || state.disabled,
-                onClick: () => post('/persona-grow/switch', { name: item.name }),
-              }, '切换'),
-            )),
+          h('div', { style: S.cardTitle }, '灵魂切换'),
+          h('div', { style: S.row },
+            h('select', {
+              style: S.select,
+              value: state.current,
+              disabled: busy || state.disabled,
+              onChange: (event) => switchTo(event.target.value),
+            }, options.map((option) => h('option', { key: option.value, value: option.value }, option.label))),
+            h('span', { style: S.muted }, others.length === 0 ? '还没有其他灵魂' : `共 ${others.length + 1} 份灵魂`),
+          ),
+          h('div', { style: S.row },
+            h('input', {
+              style: S.input,
+              placeholder: '新灵魂的名字',
+              value: newName,
+              onChange: (event) => setNewName(event.target.value),
+            }),
+            h('button', {
+              type: 'button',
+              style: S.btn,
+              disabled: busy || state.disabled || newName.trim() === '',
+              onClick: () => {
+                post('/persona-grow/create', { name: newName.trim() }, `已新建灵魂「${newName.trim()}」`)
+                setNewName('')
+              },
+            }, '新建灵魂'),
+          ),
+          h('div', { style: S.muted }, '新建时沿用当前身份文件当模板，条目从零开始；建好后在下拉里选它就能切过去。'),
         ),
+
         h('div', { style: S.card },
           h('div', { style: S.cardTitle }, '配置'),
-          h('p', { style: S.intro }, '改完点旁边的保存；写进 profile 的 patch 并立即生效。'),
-          configField('maxChars', '注入预算 maxChars', '字符数'),
-          configField('careEveryDays', '整理提醒 careEveryDays', '天'),
-          configField('recentExperiences', '最近经历条数', '条'),
-          configField('decayDays', '衰减 decayDays', '天/级'),
-          configField('minStrength', '最低强度', '1-5'),
-          configField('userLabel', '称呼 userLabel', '注入文案里的称呼'),
+          h('p', { style: S.intro }, '改完点保存：写进 profile 的 patch 并立即生效，不用手动改 yaml。'),
+          CONFIG_FIELDS.map(configField),
         ),
+
         h('div', { style: S.card },
           h('div', { style: S.cardTitle }, '保护性禁用'),
           h('div', { style: S.body },
@@ -243,8 +272,8 @@ window.__ModuleLoader__.load({
                 type: 'button',
                 style: S.btnPrimary,
                 disabled: busy,
-                onClick: () => post('/persona-grow/enable'),
-              }, '还原人格'),
+                onClick: () => post('/persona-grow/enable', {}, '已还原'),
+              }, '还原灵魂'),
               h('span', { style: S.muted }, state.disabledFromExists ? '备份在位' : '备份可能已丢失'),
             )
             : h('div', { style: S.row },
@@ -253,13 +282,12 @@ window.__ModuleLoader__.load({
                 style: S.btnDanger,
                 disabled: busy,
                 onClick: () => {
-                  if (!window.confirm('确定要禁用人格吗？会先备份并校验，然后清空当前档案。')) return
-                  post('/persona-grow/disable')
+                  if (!window.confirm('确定要禁用灵魂吗？会先备份并校验，然后清空当前档案。')) return
+                  post('/persona-grow/disable', {}, '已禁用')
                 },
-              }, '禁用人格'),
+              }, '禁用灵魂'),
             ),
         ),
-        h('div', { style: S.muted }, '配置项（maxChars / careEveryDays 等）仍走插件配置面板。'),
       )
     }
 

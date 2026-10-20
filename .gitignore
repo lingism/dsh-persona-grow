@@ -1,0 +1,10 @@
+# 依赖与产物
+node_modules/
+*.log
+*.tgz
+.DS_Store
+
+# 本地人格数据（绝不入仓）
+persona/
+persona-backups/
+*.jsonl

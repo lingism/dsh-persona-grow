@@ -125,6 +125,13 @@ window.__ModuleLoader__.load({
           .finally(() => setBusy(false))
       }
 
+      if (state === null && error !== '') {
+        return h('div', { style: S.root },
+          h('h2', { style: S.h2 }, '人格'),
+          h('div', { style: S.error }, error),
+          h('button', { type: 'button', style: S.btn, onClick: load }, '重试'),
+        )
+      }
       if (state === null) {
         return h('div', { style: S.root }, h('h2', { style: S.h2 }, '人格'), h('p', { style: S.intro }, '加载中…'))
       }

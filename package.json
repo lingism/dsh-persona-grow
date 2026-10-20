@@ -8,16 +8,24 @@
     ".": {
       "default": "./lib/index.js"
     },
+    "./client": "./client/client.js",
     "./package.json": "./package.json"
   },
   "files": [
     "lib/**/*.js",
+    "client/**/*.js",
     "cordis.patch.yml",
     "README.md"
   ],
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-settings"
+      ],
+      "platform": "web"
     },
     "engines": {
       "dsh": ">=0.2.0-rc.2"

@@ -236,8 +236,8 @@ $DSH_HOME/
 
 ```js
 persona_profile({ action: 'list' })                          // 看有哪些
-persona_profile({ action: 'create', name: 'assistant-b' })           // 从当前身份文件起个新档案
-persona_profile({ action: 'switch', name: 'assistant-b' })           // 切过去
+persona_profile({ action: 'create', name: 'assistant-b' })    // 从当前身份文件起个新档案
+persona_profile({ action: 'switch', name: 'assistant-b' })    // 切过去
 ```
 
 **切换 = 两个目录对调**：不改任何读取路径，插件根本不需要知道有几个档案。新建时沿用当前

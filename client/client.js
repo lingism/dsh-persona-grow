@@ -31,7 +31,8 @@ window.__ModuleLoader__.load({
 `
 
     function Select({ options, value, disabled, label, onChange }) {
-      const id = react.useId()
+      // 不用 react.useId（React 18+ 才有，这个环境没有）：面板里只有一个 Select，固定 id 够用
+      const id = 'pg-soul-select'
       const trigger = react.useRef(null)
       const list = react.useRef(null)
       const [open, setOpen] = react.useState(false)

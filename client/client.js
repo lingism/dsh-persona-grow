@@ -93,6 +93,9 @@ window.__ModuleLoader__.load({
         background: 'var(--dsw-alias-bg-l1)',
         color: 'var(--dsw-alias-label-primary)',
         minWidth: '180px',
+        // 原生下拉（option 弹层）是系统绘制的，inline 背景色会被忽略；
+        // color-scheme 才会让浏览器把下拉列表也按深色渲染
+        colorScheme: 'dark',
       },
       fieldLabel: { fontSize: '13px', minWidth: '120px', color: 'var(--dsw-alias-label-secondary)' },
       input: {

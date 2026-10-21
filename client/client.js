@@ -232,51 +232,76 @@ window.__ModuleLoader__.load({
           h('div', { style: S.row },
             // 不用原生 select：它的下拉弹层由系统绘制，Chromium 会忽略 option 的背景色，
             // 深色主题下总是一片白。改成按钮组，样式和主题完全由我们控制。
-            // 原生 select 的下拉弹层由系统绘制（深色主题下必白底），所以自己画一个：
-            // 按钮 + 条件渲染菜单，全原生标签（h 作用域踩过坑，不用子组件）
-            // 样式只做静态美化，不加 hover 状态（上次加 hover 崩过）
+            // 原生 select 的下拉弹层由系统绘制（深色主题下必白底），所以自己画一个。
+            // 视觉对齐 @copylee/dsh-computer-use 的 Select（已验证好看）：
+            // 36px 高、border-l4、bg-layer-3、menu-surface-fill、elevation-prominent
             h('div', { style: { position: 'relative', display: 'inline-block' } },
               h('button', {
                 type: 'button',
                 disabled: busy || state.disabled,
                 onClick: () => setSoulMenuOpen(!soulMenuOpen),
                 style: {
-                  display: 'flex', alignItems: 'center', gap: '8px',
-                  minWidth: '180px', padding: '6px 12px', fontSize: '13px', textAlign: 'left',
-                  borderRadius: '8px',
-                  border: '1px solid var(--dsw-alias-border-l3, rgba(127,127,127,.35))',
-                  background: 'var(--dsw-alias-bg-layer-2, rgba(255,255,255,.04))',
+                  boxSizing: 'border-box',
+                  height: '36px',
+                  minWidth: '180px',
+                  padding: '0 12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  textAlign: 'left',
+                  border: '1px solid var(--dsw-alias-border-l4, rgba(127,127,127,.3))',
+                  borderRadius: 'var(--dsw-radius-md, 8px)',
+                  background: 'var(--dsw-alias-bg-layer-3, transparent)',
                   color: 'inherit',
+                  font: 'inherit',
+                  fontSize: '13px',
                   cursor: (busy || state.disabled) ? 'default' : 'pointer',
                   opacity: (busy || state.disabled) ? 0.5 : 1,
                 },
               },
-              h('span', { style: { flex: 1 } }, state.name || state.current),
+              h('span', { style: { flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, state.name || state.current),
               h('span', { style: { fontSize: '9px', opacity: 0.6 } }, soulMenuOpen ? '\u25B2' : '\u25BC')),
               soulMenuOpen
                 ? h('div', {
                     style: {
-                      position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 50,
-                      minWidth: '240px', padding: '6px',
-                      borderRadius: '10px',
-                      background: 'var(--dsw-alias-bg-layer-2, #2c2c30)',
-                      border: '1px solid var(--dsw-alias-border-l2, rgba(127,127,127,.25))',
-                      boxShadow: '0 12px 32px rgba(0,0,0,.4)',
+                      position: 'absolute',
+                      top: 'calc(100% + 4px)',
+                      left: 0,
+                      zIndex: 50,
+                      minWidth: '240px',
+                      maxHeight: '320px',
+                      padding: '4px',
+                      overflowY: 'auto',
+                      borderRadius: 'var(--dsw-radius-lg, 12px)',
+                      background: 'var(--dsw-menu-surface-fill, var(--dsw-alias-bg-layer-1, #2a2a2e))',
+                      color: 'var(--dsw-alias-label-primary, #eee)',
+                      boxShadow: 'var(--dsw-elevation-prominent, 0 10px 32px rgba(0,0,0,.16), 0 0 0 .5px rgba(0,0,0,.1))',
                     },
-                  }, options.map((option) => h('div', {
-                    key: option.value,
-                    onClick: () => { setSoulMenuOpen(false); switchTo(option.value) },
-                    style: {
-                      display: 'flex', alignItems: 'center', gap: '8px',
-                      padding: '8px 10px', margin: '2px 0',
-                      fontSize: '13px', borderRadius: '7px', cursor: 'pointer',
-                      background: option.value === state.current
-                        ? 'var(--dsw-alias-interactive-bg-hover, rgba(127,127,127,.15))'
-                        : 'transparent',
+                  }, options.map((option) => {
+                    const current = option.value === state.current
+                    return h('div', {
+                      key: option.value,
+                      onClick: () => { setSoulMenuOpen(false); switchTo(option.value) },
+                      style: {
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        minHeight: '34px',
+                        padding: '6px 8px',
+                        boxSizing: 'border-box',
+                        borderRadius: 'var(--dsw-radius-md, 8px)',
+                        fontSize: '13px',
+                        lineHeight: '20px',
+                        cursor: 'pointer',
+                        userSelect: 'none',
+                        background: current
+                          ? 'var(--dsw-alias-interactive-bg-hover, rgba(127,127,127,.12))'
+                          : 'transparent',
+                      },
                     },
-                  },
-                  h('span', { style: { flex: 1 } }, option.label),
-                  option.value === state.current ? h('span', { style: { fontSize: '11px', opacity: 0.7 } }, '\u2713') : null)))
+                    h('span', { style: { flex: 1 } }, option.label),
+                    current ? h('span', { style: { fontSize: '11px', opacity: 0.7 } }, '\u2713') : null)
+                  }))
                 : null),
             h('span', { style: S.muted }, others.length === 0 ? '还没有其他灵魂' : `共 ${others.length + 1} 份灵魂`),
           ),

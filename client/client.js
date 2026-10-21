@@ -231,7 +231,15 @@ window.__ModuleLoader__.load({
               value: state.current,
               disabled: busy || state.disabled,
               onChange: (event) => switchTo(event.target.value),
-            }, options.map((option) => h('option', { key: option.value, value: option.value }, option.label))),
+            }, options.map((option) => h('option', {
+              key: option.value,
+              value: option.value,
+              // 下拉列表（option）要单独给底色：默认是白底，深色主题下看不清
+              style: {
+                background: 'var(--dsw-alias-bg-l1)',
+                color: 'var(--dsw-alias-label-primary)',
+              },
+            }, option.label))),
             h('span', { style: S.muted }, others.length === 0 ? '还没有其他灵魂' : `共 ${others.length + 1} 份灵魂`),
           ),
           h('div', { style: S.row },

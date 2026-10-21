@@ -20,41 +20,74 @@ window.__ModuleLoader__.load({
      * 自绘下拉：原生 <select> 的弹层由系统绘制，深色主题下必白底，所以自己画。
      * 交互和定位参考 @copylee/dsh-computer-use 的 Select（已验证可用）。
      */
-    const selectCss = `
-.pg-select{box-sizing:border-box;width:100%;height:36px;padding:0 12px;display:flex;align-items:center;gap:8px;text-align:left;border:1px solid var(--dsw-alias-border-l4,rgba(127,127,127,.3));border-radius:var(--dsw-radius-md,8px);background:var(--dsw-alias-bg-layer-3,transparent);color:inherit;font:inherit;font-size:13px;cursor:pointer}
-.pg-select:hover{border-color:var(--dsw-alias-border-l3,#888)}
-.pg-select:focus-visible,.pg-select[aria-expanded=true]{outline:2px solid var(--cl-accent,#D97757);outline-offset:2px}
-.pg-select:disabled{opacity:.5;cursor:default}
-.pg-menu{position:fixed;z-index:1100;box-sizing:border-box;padding:4px;overflow-y:auto;overscroll-behavior:contain;border-radius:var(--dsw-radius-lg,12px);background:var(--dsw-menu-surface-fill,var(--dsw-alias-bg-layer-1,#fff));color:var(--dsw-alias-label-primary,#222);backdrop-filter:var(--dsw-menu-backdrop-filter,none);box-shadow:var(--dsw-elevation-prominent,0 10px 32px rgba(0,0,0,.16),0 0 0 .5px rgba(0,0,0,.1))}
-.pg-option{display:flex;align-items:center;gap:8px;min-height:34px;padding:6px 8px;box-sizing:border-box;border-radius:var(--dsw-radius-md,8px);font-size:13px;line-height:20px;cursor:pointer;user-select:none}
-.pg-option[data-active=true]{background:var(--dsw-alias-interactive-bg-hover,rgba(127,127,127,.12))}
-`
 
     function Select({ options, value, disabled, label, onChange }) {
-      // 最简实现：只用一个 useState + 绝对定位。
-      // 之前用 ref/useCallback/fixed 定位的版本在渲染时崩过，不再碰那些。
+      // 全内联样式：不注入 <style>、不依赖 CSS 类（注入 style 标签在这个渲染器里踩过坑）
       const [open, setOpen] = react.useState(false)
       const selected = options.findIndex((option) => option.value === value)
-      return h('div', { style: { position: 'relative', minWidth: '180px' } },
+      const trigger = {
+        boxSizing: 'border-box',
+        width: '100%',
+        height: '36px',
+        padding: '0 12px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px',
+        textAlign: 'left',
+        border: '1px solid var(--dsw-alias-border-l3, rgba(127,127,127,.35))',
+        borderRadius: '8px',
+        background: 'var(--dsw-alias-bg-layer-3, rgba(255,255,255,.04))',
+        color: 'inherit',
+        font: 'inherit',
+        fontSize: '13px',
+        cursor: disabled ? 'default' : 'pointer',
+        opacity: disabled ? 0.5 : 1,
+        minWidth: '180px',
+      }
+      const menu = {
+        position: 'absolute',
+        top: '100%',
+        left: 0,
+        right: 0,
+        marginTop: '4px',
+        zIndex: 20,
+        padding: '4px',
+        maxHeight: '260px',
+        overflowY: 'auto',
+        borderRadius: '10px',
+        background: 'var(--dsw-alias-bg-layer-1, #2a2a2e)',
+        color: 'var(--dsw-alias-label-primary, #eee)',
+        boxShadow: '0 10px 32px rgba(0,0,0,.35), 0 0 0 1px rgba(127,127,127,.25)',
+      }
+      const optionStyle = (active) => ({
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px',
+        minHeight: '32px',
+        padding: '6px 8px',
+        boxSizing: 'border-box',
+        borderRadius: '8px',
+        fontSize: '13px',
+        cursor: 'pointer',
+        background: active ? 'var(--dsw-alias-interactive-bg-hover, rgba(127,127,127,.18))' : 'transparent',
+        color: 'inherit',
+      })
+      return h('div', { style: { position: 'relative', display: 'inline-block', minWidth: '180px' } },
         h('button', {
           type: 'button',
-          className: 'pg-select',
           disabled,
           'aria-label': label,
+          style: trigger,
           onClick: () => setOpen(!open),
         },
         h('span', { style: { flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, options[selected]?.label || ''),
-        h('svg', { width: 14, height: 14, viewBox: '0 0 16 16', 'aria-hidden': true, style: { transform: open ? 'rotate(180deg)' : undefined } },
-          h('path', { d: 'M4 6l4 4 4-4', fill: 'none', stroke: 'currentColor', strokeWidth: 1.6 }))),
-        open ? h('div', {
-          className: 'pg-menu',
-          style: { position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '4px', maxHeight: '260px' },
-        }, options.map((option, i) => h('div', {
-          key: option.value,
-          className: 'pg-option',
-          'data-active': i === selected,
-          onClick: () => { onChange(option.value); setOpen(false) },
-        }, h('span', { style: { flex: 1 } }, option.label)))) : null)
+        h('span', { style: { fontSize: '10px', opacity: 0.7 } }, open ? '▲' : '▼')),
+        open ? h('div', { style: menu },
+          options.map((option, i) => h('div', {
+            key: option.value,
+            style: optionStyle(i === selected),
+            onClick: () => { onChange(option.value); setOpen(false) },
+          }, option.label))) : null)
     }
 
     const S = {
@@ -252,7 +285,6 @@ window.__ModuleLoader__.load({
       }
 
       return h('div', { style: S.root },
-        h('style', null, selectCss),
         h('h2', { style: S.h2 }, '人格'),
         h('p', { style: S.intro }, '同一时刻只有一份灵魂被服务；切换就是两份灵魂的目录对调，下一条消息起生效。'),
         error ? h('div', { style: S.error }, error) : null,

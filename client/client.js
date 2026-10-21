@@ -233,42 +233,50 @@ window.__ModuleLoader__.load({
             // 不用原生 select：它的下拉弹层由系统绘制，Chromium 会忽略 option 的背景色，
             // 深色主题下总是一片白。改成按钮组，样式和主题完全由我们控制。
             // 原生 select 的下拉弹层由系统绘制（深色主题下必白底），所以自己画一个：
-            // 按钮 + 条件渲染的菜单，全部原生标签，不用子组件（h 的作用域踩过坑）
+            // 按钮 + 条件渲染菜单，全原生标签（h 作用域踩过坑，不用子组件）
+            // 样式只做静态美化，不加 hover 状态（上次加 hover 崩过）
             h('div', { style: { position: 'relative', display: 'inline-block' } },
               h('button', {
                 type: 'button',
-                style: S.btn,
                 disabled: busy || state.disabled,
                 onClick: () => setSoulMenuOpen(!soulMenuOpen),
-              }, (state.name || state.current) + (soulMenuOpen ? '  \u25B2' : '  \u25BC')),
+                style: {
+                  display: 'flex', alignItems: 'center', gap: '8px',
+                  minWidth: '180px', padding: '6px 12px', fontSize: '13px', textAlign: 'left',
+                  borderRadius: '8px',
+                  border: '1px solid var(--dsw-alias-border-l3, rgba(127,127,127,.35))',
+                  background: 'var(--dsw-alias-bg-layer-2, rgba(255,255,255,.04))',
+                  color: 'inherit',
+                  cursor: disabled ? 'default' : 'pointer',
+                  opacity: disabled ? 0.5 : 1,
+                },
+              },
+              h('span', { style: { flex: 1 } }, state.name || state.current),
+              h('span', { style: { fontSize: '9px', opacity: 0.6 } }, soulMenuOpen ? '\u25B2' : '\u25BC')),
               soulMenuOpen
                 ? h('div', {
                     style: {
-                      position: 'absolute',
-                      top: '100%',
-                      left: 0,
-                      marginTop: '4px',
-                      minWidth: '220px',
-                      padding: '4px',
-                      zIndex: 50,
-                      borderRadius: '8px',
-                      background: 'var(--dsw-alias-bg-layer-1, #2a2a2e)',
-                      color: 'var(--dsw-alias-label-primary, #eee)',
-                      boxShadow: '0 8px 24px rgba(0,0,0,.35), 0 0 0 1px rgba(127,127,127,.25)',
+                      position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 50,
+                      minWidth: '240px', padding: '6px',
+                      borderRadius: '10px',
+                      background: 'var(--dsw-alias-bg-layer-2, #2c2c30)',
+                      border: '1px solid var(--dsw-alias-border-l2, rgba(127,127,127,.25))',
+                      boxShadow: '0 12px 32px rgba(0,0,0,.4)',
                     },
                   }, options.map((option) => h('div', {
                     key: option.value,
+                    onClick: () => { setSoulMenuOpen(false); switchTo(option.value) },
                     style: {
-                      padding: '6px 10px',
-                      fontSize: '13px',
-                      cursor: 'pointer',
-                      borderRadius: '6px',
+                      display: 'flex', alignItems: 'center', gap: '8px',
+                      padding: '8px 10px', margin: '2px 0',
+                      fontSize: '13px', borderRadius: '7px', cursor: 'pointer',
                       background: option.value === state.current
                         ? 'var(--dsw-alias-interactive-bg-hover, rgba(127,127,127,.15))'
                         : 'transparent',
                     },
-                    onClick: () => { setSoulMenuOpen(false); switchTo(option.value) },
-                  }, option.label)))
+                  },
+                  h('span', { style: { flex: 1 } }, option.label),
+                  option.value === state.current ? h('span', { style: { fontSize: '11px', opacity: 0.7 } }, '\u2713') : null)))
                 : null),
             h('span', { style: S.muted }, others.length === 0 ? '还没有其他灵魂' : `共 ${others.length + 1} 份灵魂`),
           ),

@@ -287,6 +287,16 @@ window.__ModuleLoader__.load({
           h('div', { style: S.cardTitle }, '配置'),
           h('p', { style: S.intro }, '改完点保存：写进 profile 的 patch 并立即生效，不用手动改 yaml。'),
           CONFIG_FIELDS.map(configField),
+          h('div', { style: S.row },
+            h('span', { style: S.muted }, '保持生长'),
+            h('button', {
+              type: 'button',
+              style: state.auto ? S.btnPrimary : S.btnSecondary,
+              disabled: busy,
+              onClick: () => post('/persona-grow/config', { key: 'auto', value: !state.auto }, state.auto ? '已关闭生长' : '已开启生长'),
+            }, state.auto ? '开（自动写灵魂）' : '关（只注入不写）'),
+          ),
+          h('div', { style: S.muted }, '关掉后不再自动写人格、技能、经历，只保留注入。模型能力弱、可能写坏灵魂时用它止损。'),
         ),
 
         h('div', { style: S.card },

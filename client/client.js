@@ -232,77 +232,35 @@ window.__ModuleLoader__.load({
           h('div', { style: S.row },
             // 不用原生 select：它的下拉弹层由系统绘制，Chromium 会忽略 option 的背景色，
             // 深色主题下总是一片白。改成按钮组，样式和主题完全由我们控制。
-            // 原生 select 的下拉弹层由系统绘制（深色主题下必白底），所以自己画一个。
-            // 视觉对齐 @copylee/dsh-computer-use 的 Select（已验证好看）：
-            // 36px 高、border-l4、bg-layer-3、menu-surface-fill、elevation-prominent
-            h('div', { style: { position: 'relative', display: 'inline-block' } },
-              h('button', {
-                type: 'button',
-                disabled: busy || state.disabled,
-                onClick: () => setSoulMenuOpen(!soulMenuOpen),
-                style: {
-                  boxSizing: 'border-box',
-                  height: '36px',
-                  minWidth: '180px',
-                  padding: '0 12px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  textAlign: 'left',
-                  border: '1px solid var(--dsw-alias-border-l4, rgba(127,127,127,.3))',
-                  borderRadius: 'var(--dsw-radius-md, 8px)',
-                  background: 'var(--dsw-alias-bg-layer-3, transparent)',
-                  color: 'inherit',
-                  font: 'inherit',
-                  fontSize: '13px',
-                  cursor: (busy || state.disabled) ? 'default' : 'pointer',
-                  opacity: (busy || state.disabled) ? 0.5 : 1,
-                },
+            // 原生 select + color-scheme:dark（实测有效：color-scheme 让下拉弹层走深色，
+            // background/color 补齐控件本身；三个一起给才黑，只给 color-scheme 不够）
+            h('select', {
+              value: state.current,
+              disabled: busy || state.disabled,
+              onChange: (event) => switchTo(event.target.value),
+              style: {
+                boxSizing: 'border-box',
+                height: '36px',
+                minWidth: '180px',
+                padding: '0 12px',
+                borderRadius: 'var(--dsw-radius-md, 8px)',
+                border: '1px solid var(--dsw-alias-border-l4, rgba(127,127,127,.3))',
+                background: 'var(--dsw-alias-bg-layer-3, #2a2a2e)',
+                color: 'inherit',
+                font: 'inherit',
+                fontSize: '13px',
+                colorScheme: 'dark',
+                cursor: (busy || state.disabled) ? 'default' : 'pointer',
+                opacity: (busy || state.disabled) ? 0.5 : 1,
               },
-              h('span', { style: { flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, state.name || state.current),
-              h('span', { style: { fontSize: '9px', opacity: 0.6 } }, soulMenuOpen ? '\u25B2' : '\u25BC')),
-              soulMenuOpen
-                ? h('div', {
-                    style: {
-                      position: 'absolute',
-                      top: 'calc(100% + 4px)',
-                      left: 0,
-                      zIndex: 50,
-                      minWidth: '240px',
-                      maxHeight: '320px',
-                      padding: '4px',
-                      overflowY: 'auto',
-                      borderRadius: 'var(--dsw-radius-lg, 12px)',
-                      background: 'var(--dsw-menu-surface-fill, var(--dsw-alias-bg-layer-1, #2a2a2e))',
-                      color: 'var(--dsw-alias-label-primary, #eee)',
-                      boxShadow: 'var(--dsw-elevation-prominent, 0 10px 32px rgba(0,0,0,.16), 0 0 0 .5px rgba(0,0,0,.1))',
-                    },
-                  }, options.map((option) => {
-                    const current = option.value === state.current
-                    return h('div', {
-                      key: option.value,
-                      onClick: () => { setSoulMenuOpen(false); switchTo(option.value) },
-                      style: {
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        minHeight: '34px',
-                        padding: '6px 8px',
-                        boxSizing: 'border-box',
-                        borderRadius: 'var(--dsw-radius-md, 8px)',
-                        fontSize: '13px',
-                        lineHeight: '20px',
-                        cursor: 'pointer',
-                        userSelect: 'none',
-                        background: current
-                          ? 'var(--dsw-alias-interactive-bg-hover, rgba(127,127,127,.12))'
-                          : 'transparent',
-                      },
-                    },
-                    h('span', { style: { flex: 1 } }, option.label),
-                    current ? h('span', { style: { fontSize: '11px', opacity: 0.7 } }, '\u2713') : null)
-                  }))
-                : null),
+            }, options.map((option) => h('option', {
+              key: option.value,
+              value: option.value,
+              style: {
+                background: 'var(--dsw-alias-bg-layer-1, #2a2a2e)',
+                color: 'var(--dsw-alias-label-primary, #eee)',
+              },
+            }, option.label))),
             h('span', { style: S.muted }, others.length === 0 ? '还没有其他灵魂' : `共 ${others.length + 1} 份灵魂`),
           ),
           h('div', { style: S.row },

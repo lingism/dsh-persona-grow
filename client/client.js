@@ -229,20 +229,16 @@ window.__ModuleLoader__.load({
         h('div', { style: S.card },
           h('div', { style: S.cardTitle }, '灵魂切换'),
           h('div', { style: S.row },
-            h('select', {
-              style: S.select,
-              value: state.current,
-              disabled: busy || state.disabled,
-              onChange: (event) => switchTo(event.target.value),
-            }, options.map((option) => h('option', {
-              key: option.value,
-              value: option.value,
-              // 下拉列表（option）要单独给底色：默认是白底，深色主题下看不清
-              style: {
-                background: 'var(--dsw-alias-bg-l1)',
-                color: 'var(--dsw-alias-label-primary)',
-              },
-            }, option.label))),
+            // 不用原生 select：它的下拉弹层由系统绘制，Chromium 会忽略 option 的背景色，
+            // 深色主题下总是一片白。改成按钮组，样式和主题完全由我们控制。
+            h('div', { style: { display: 'flex', flexWrap: 'wrap', gap: '6px' } },
+              options.map((option) => h('button', {
+                key: option.value,
+                type: 'button',
+                style: option.value === state.current ? S.btnPrimary : S.btn,
+                disabled: busy || state.disabled,
+                onClick: () => switchTo(option.value),
+              }, option.label))),
             h('span', { style: S.muted }, others.length === 0 ? '还没有其他灵魂' : `共 ${others.length + 1} 份灵魂`),
           ),
           h('div', { style: S.row },

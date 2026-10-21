@@ -16,80 +16,6 @@ window.__ModuleLoader__.load({
       return new URL(relative, document.baseURI).pathname
     }
 
-    /**
-     * 自绘下拉：原生 <select> 的弹层由系统绘制，深色主题下必白底，所以自己画。
-     * 交互和定位参考 @copylee/dsh-computer-use 的 Select（已验证可用）。
-     */
-
-    function Select({ options, value, disabled, label, onChange }) {
-      // 全内联样式：不注入 <style>、不依赖 CSS 类（注入 style 标签在这个渲染器里踩过坑）
-      const [open, setOpen] = react.useState(false)
-      const selected = options.findIndex((option) => option.value === value)
-      const trigger = {
-        boxSizing: 'border-box',
-        width: '100%',
-        height: '36px',
-        padding: '0 12px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '8px',
-        textAlign: 'left',
-        border: '1px solid var(--dsw-alias-border-l3, rgba(127,127,127,.35))',
-        borderRadius: '8px',
-        background: 'var(--dsw-alias-bg-layer-3, rgba(255,255,255,.04))',
-        color: 'inherit',
-        font: 'inherit',
-        fontSize: '13px',
-        cursor: disabled ? 'default' : 'pointer',
-        opacity: disabled ? 0.5 : 1,
-        minWidth: '180px',
-      }
-      const menu = {
-        position: 'absolute',
-        top: '100%',
-        left: 0,
-        right: 0,
-        marginTop: '4px',
-        zIndex: 20,
-        padding: '4px',
-        maxHeight: '260px',
-        overflowY: 'auto',
-        borderRadius: '10px',
-        background: 'var(--dsw-alias-bg-layer-1, #2a2a2e)',
-        color: 'var(--dsw-alias-label-primary, #eee)',
-        boxShadow: '0 10px 32px rgba(0,0,0,.35), 0 0 0 1px rgba(127,127,127,.25)',
-      }
-      const optionStyle = (active) => ({
-        display: 'flex',
-        alignItems: 'center',
-        gap: '8px',
-        minHeight: '32px',
-        padding: '6px 8px',
-        boxSizing: 'border-box',
-        borderRadius: '8px',
-        fontSize: '13px',
-        cursor: 'pointer',
-        background: active ? 'var(--dsw-alias-interactive-bg-hover, rgba(127,127,127,.18))' : 'transparent',
-        color: 'inherit',
-      })
-      return h('div', { style: { position: 'relative', display: 'inline-block', minWidth: '180px' } },
-        h('button', {
-          type: 'button',
-          disabled,
-          'aria-label': label,
-          style: trigger,
-          onClick: () => setOpen(!open),
-        },
-        h('span', { style: { flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, options[selected]?.label || ''),
-        h('span', { style: { fontSize: '10px', opacity: 0.7 } }, open ? '▲' : '▼')),
-        open ? h('div', { style: menu },
-          options.map((option, i) => h('div', {
-            key: option.value,
-            style: optionStyle(i === selected),
-            onClick: () => { onChange(option.value); setOpen(false) },
-          }, option.label))) : null)
-    }
-
     const S = {
       root: { display: 'flex', flexDirection: 'column', gap: '12px', maxWidth: '760px' },
       h2: { margin: '0', fontSize: '18px', fontWeight: 600 },
@@ -303,14 +229,16 @@ window.__ModuleLoader__.load({
         h('div', { style: S.card },
           h('div', { style: S.cardTitle }, '灵魂切换'),
           h('div', { style: S.row },
-            // 自绘下拉（见 Select 组件）：原生 select 的下拉弹层系统绘制、深色主题下必白底
-            h(Select, {
-              options,
-              value: state.current,
-              disabled: busy || state.disabled,
-              label: '切换灵魂',
-              onChange: (name) => switchTo(name),
-            }),
+            // 不用原生 select：它的下拉弹层由系统绘制，Chromium 会忽略 option 的背景色，
+            // 深色主题下总是一片白。改成按钮组，样式和主题完全由我们控制。
+            h('div', { style: { display: 'flex', flexWrap: 'wrap', gap: '6px' } },
+              options.map((option) => h('button', {
+                key: option.value,
+                type: 'button',
+                style: option.value === state.current ? S.btnPrimary : S.btn,
+                disabled: busy || state.disabled,
+                onClick: () => switchTo(option.value),
+              }, option.label))),
             h('span', { style: S.muted }, others.length === 0 ? '还没有其他灵魂' : `共 ${others.length + 1} 份灵魂`),
           ),
           h('div', { style: S.row },

@@ -31,139 +31,30 @@ window.__ModuleLoader__.load({
 `
 
     function Select({ options, value, disabled, label, onChange }) {
-      // 不用 react.useId（React 18+ 才有，这个环境没有）：面板里只有一个 Select，固定 id 够用
-      const id = 'pg-soul-select'
-      const trigger = react.useRef(null)
-      const list = react.useRef(null)
+      // 最简实现：只用一个 useState + 绝对定位。
+      // 之前用 ref/useCallback/fixed 定位的版本在渲染时崩过，不再碰那些。
       const [open, setOpen] = react.useState(false)
-      const [active, setActive] = react.useState(0)
-      const [pos, setPos] = react.useState({})
       const selected = options.findIndex((option) => option.value === value)
-      const place = react.useCallback(() => {
-        const r = trigger.current?.getBoundingClientRect()
-        if (!r) return
-        const below = window.innerHeight - r.bottom - 12
-        const above = r.top - 12
-        const up = below < Math.min(options.length * 34 + 8, 220) && above > below
-        const width = Math.min(Math.max(r.width, 180), 440, window.innerWidth - 16)
-        setPos({
-          left: Math.max(8, Math.min(r.left, window.innerWidth - width - 8)),
-          width,
-          maxHeight: Math.max(0, Math.min(360, (up ? above : below) - 4)),
-          ...(up ? { bottom: window.innerHeight - r.top + 4 } : { top: r.bottom + 4 }),
-        })
-      }, [options.length])
-      const close = (refocus = false) => {
-        setOpen(false)
-        if (refocus) trigger.current?.focus()
-      }
-      const choose = (index) => {
-        if (!disabled && options[index]) onChange(options[index].value)
-        close(true)
-      }
-      const show = () => {
-        if (!disabled) {
-          place()
-          setActive(Math.max(0, selected))
-          setOpen(true)
-        }
-      }
-      react.useEffect(() => { if (disabled) setOpen(false) }, [disabled])
-      react.useEffect(() => {
-        if (!open) return
-        const pointer = (e) => {
-          if (!list.current?.contains(e.target) && !trigger.current?.contains(e.target)) setOpen(false)
-        }
-        const scroll = (e) => { if (!list.current?.contains(e.target)) place() }
-        document.addEventListener('pointerdown', pointer, true)
-        window.addEventListener('scroll', scroll, true)
-        window.addEventListener('resize', place)
-        return () => {
-          document.removeEventListener('pointerdown', pointer, true)
-          window.removeEventListener('scroll', scroll, true)
-          window.removeEventListener('resize', place)
-        }
-      }, [open, place])
-      react.useEffect(() => {
-        list.current?.querySelector(`[data-index="${active}"]`)?.scrollIntoView({ block: 'nearest' })
-      }, [active, open])
-
-      return h('div', { style: { minWidth: 0 } },
+      return h('div', { style: { position: 'relative', minWidth: '180px' } },
         h('button', {
-          ref: trigger,
           type: 'button',
           className: 'pg-select',
           disabled,
-          role: 'combobox',
           'aria-label': label,
-          'aria-haspopup': 'listbox',
-          'aria-expanded': open,
-          'aria-controls': open ? `${id}-list` : undefined,
-          'aria-activedescendant': open ? `${id}-${active}` : undefined,
-          onBlur: () => close(),
-          onClick: () => (open ? close() : show()),
-          onKeyDown: (e) => {
-            if (disabled) return
-            if (!open) {
-              if (['ArrowDown', 'ArrowUp', 'Enter', ' '].includes(e.key)) {
-                e.preventDefault()
-                show()
-              }
-            } else if (e.key === 'Escape') {
-              e.preventDefault()
-              close(true)
-            } else if (e.key === 'Tab') close()
-            else if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(e.key)) {
-              e.preventDefault()
-              setActive((i) => (e.key === 'Home' ? 0 : e.key === 'End' ? options.length - 1 : (i + (e.key === 'ArrowDown' ? 1 : -1) + options.length) % options.length))
-            } else if (['Enter', ' '].includes(e.key)) {
-              e.preventDefault()
-              choose(active)
-            }
-          },
+          onClick: () => setOpen(!open),
         },
-        h('span', {
-          style: { flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
-        }, options[selected]?.label),
-        h('svg', {
-          width: 14,
-          height: 14,
-          viewBox: '0 0 16 16',
-          'aria-hidden': true,
-          style: { transform: open ? 'rotate(180deg)' : undefined },
-        }, h('path', { d: 'M4 6l4 4 4-4', fill: 'none', stroke: 'currentColor', strokeWidth: 1.6 }))),
+        h('span', { style: { flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, options[selected]?.label || ''),
+        h('svg', { width: 14, height: 14, viewBox: '0 0 16 16', 'aria-hidden': true, style: { transform: open ? 'rotate(180deg)' : undefined } },
+          h('path', { d: 'M4 6l4 4 4-4', fill: 'none', stroke: 'currentColor', strokeWidth: 1.6 }))),
         open ? h('div', {
-          ref: list,
-          id: `${id}-list`,
-          role: 'listbox',
-          'aria-label': label,
           className: 'pg-menu',
-          style: pos,
-        }, ...options.map((option, i) => h('div', {
+          style: { position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '4px', maxHeight: '260px' },
+        }, options.map((option, i) => h('div', {
           key: option.value,
-          id: `${id}-${i}`,
-          role: 'option',
-          'aria-selected': i === selected,
-          'data-index': i,
-          'data-active': i === active,
           className: 'pg-option',
-          onPointerMove: () => setActive(i),
-          onPointerDown: (e) => e.preventDefault(),
-          onClick: () => choose(i),
-        }, h('span', { style: { flex: 1 } }, option.label),
-        h('span', { style: { width: 14 } }, i === selected ? h('svg', {
-          width: 14,
-          height: 14,
-          viewBox: '0 0 16 16',
-          'aria-hidden': true,
-        }, h('path', {
-          d: 'M3.5 8.5 6.5 11.5 12.5 4.5',
-          fill: 'none',
-          stroke: 'currentColor',
-          strokeWidth: 1.7,
-          strokeLinecap: 'round',
-          strokeLinejoin: 'round',
-        })) : null)))) : null)
+          'data-active': i === selected,
+          onClick: () => { onChange(option.value); setOpen(false) },
+        }, h('span', { style: { flex: 1 } }, option.label)))) : null)
     }
 
     const S = {

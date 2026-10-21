@@ -8,6 +8,7 @@ window.__ModuleLoader__.load({
   id: 'dsh-persona-grow',
   factory: (require) => {
     const react = require('react')
+    const h = react.createElement
 
     /** 把插件路由解析成同源路径（Electron 的 file:// 与 Web 的 http:// 都适用）。 */
     function api(path) {
@@ -122,7 +123,6 @@ window.__ModuleLoader__.load({
     ]
 
     function PersonaSection() {
-      const h = react.createElement
       const [state, setState] = react.useState(null)
       const [config, setConfig] = react.useState(null)
       const [draft, setDraft] = react.useState({})
@@ -130,6 +130,7 @@ window.__ModuleLoader__.load({
       const [busy, setBusy] = react.useState(false)
       const [error, setError] = react.useState('')
       const [note, setNote] = react.useState('')
+      const [soulMenuOpen, setSoulMenuOpen] = react.useState(false)
 
       const load = react.useCallback(() => {
         Promise.all([
@@ -231,14 +232,44 @@ window.__ModuleLoader__.load({
           h('div', { style: S.row },
             // 不用原生 select：它的下拉弹层由系统绘制，Chromium 会忽略 option 的背景色，
             // 深色主题下总是一片白。改成按钮组，样式和主题完全由我们控制。
-            h('div', { style: { display: 'flex', flexWrap: 'wrap', gap: '6px' } },
-              options.map((option) => h('button', {
-                key: option.value,
+            // 原生 select 的下拉弹层由系统绘制（深色主题下必白底），所以自己画一个：
+            // 按钮 + 条件渲染的菜单，全部原生标签，不用子组件（h 的作用域踩过坑）
+            h('div', { style: { position: 'relative', display: 'inline-block' } },
+              h('button', {
                 type: 'button',
-                style: option.value === state.current ? S.btnPrimary : S.btn,
+                style: S.btn,
                 disabled: busy || state.disabled,
-                onClick: () => switchTo(option.value),
-              }, option.label))),
+                onClick: () => setSoulMenuOpen(!soulMenuOpen),
+              }, (state.name || state.current) + (soulMenuOpen ? '  \u25B2' : '  \u25BC')),
+              soulMenuOpen
+                ? h('div', {
+                    style: {
+                      position: 'absolute',
+                      top: '100%',
+                      left: 0,
+                      marginTop: '4px',
+                      minWidth: '220px',
+                      padding: '4px',
+                      zIndex: 50,
+                      borderRadius: '8px',
+                      background: 'var(--dsw-alias-bg-layer-1, #2a2a2e)',
+                      color: 'var(--dsw-alias-label-primary, #eee)',
+                      boxShadow: '0 8px 24px rgba(0,0,0,.35), 0 0 0 1px rgba(127,127,127,.25)',
+                    },
+                  }, options.map((option) => h('div', {
+                    key: option.value,
+                    style: {
+                      padding: '6px 10px',
+                      fontSize: '13px',
+                      cursor: 'pointer',
+                      borderRadius: '6px',
+                      background: option.value === state.current
+                        ? 'var(--dsw-alias-interactive-bg-hover, rgba(127,127,127,.15))'
+                        : 'transparent',
+                    },
+                    onClick: () => { setSoulMenuOpen(false); switchTo(option.value) },
+                  }, option.label)))
+                : null),
             h('span', { style: S.muted }, others.length === 0 ? '还没有其他灵魂' : `共 ${others.length + 1} 份灵魂`),
           ),
           h('div', { style: S.row },

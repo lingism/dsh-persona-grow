@@ -145,7 +145,7 @@ persona_review     # 翻几条看看内容对不对
 - id: persona-grow
   name: 'dsh-persona-grow'
   config:
-    auto: true                 # 关掉只剩手动工具
+    auto: true                 # 生长开关：关掉后人格/技能不写，经历照常由模型总结
     provider: deepseek-account
     model: deepseek-flash      # 判断用的模型
     minChars: 60               # 低于这个长度不判断
@@ -164,6 +164,17 @@ persona_review     # 翻几条看看内容对不对
     sectionOrder: 10300
     dir: ''                    # 空 = $DSH_HOME/persona
 ```
+
+### 生长开关（`auto`）
+
+关掉之后**判断照跑、写入被拦**：每轮还是会把对话交给模型做三层分流（人格 / 技能 / 经历），
+
+- 模型给了人格或技能 → 这轮就算走了那一层：人格/技能因为开关关着不写，**经历也不写**
+- 两层都没给 → 这轮才算经历，照常写进经历层
+
+所以关掉不等于彻底停止记录：人格和技能冻住不动，经历还会按轮次往下流。
+合并（consolidation）也一起停——它和自动写入走同一个 `growEntries` 闸门。
+手动工具（`persona_grow` 等）不受影响。
 
 ### `maxChars` 怎么定
 

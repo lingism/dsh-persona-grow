@@ -294,9 +294,9 @@ window.__ModuleLoader__.load({
               style: state.auto ? S.btnPrimary : S.btnSecondary,
               disabled: busy,
               onClick: () => post('/persona-grow/config', { key: 'auto', value: !state.auto }, state.auto ? '已关闭生长' : '已开启生长'),
-            }, state.auto ? '开（保持生长）' : '关（停止生长）'),
+            }, state.auto ? '开（保持生长）' : '关（只记经历）'),
           ),
-          h('div', { style: S.muted }, '关掉后不再自动写人格、技能、经历，只保留注入。模型能力弱、可能写坏灵魂时用它止损。'),
+          h('div', { style: S.muted }, '关掉后人格、技能都不写，模型仍会总结经历；模型给出人格或技能的那一轮，经历也不写。模型能力弱、可能写坏灵魂时用它止损。'),
         ),
 
         h('div', { style: S.card },

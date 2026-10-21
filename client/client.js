@@ -16,6 +16,155 @@ window.__ModuleLoader__.load({
       return new URL(relative, document.baseURI).pathname
     }
 
+    /**
+     * 自绘下拉：原生 <select> 的弹层由系统绘制，深色主题下必白底，所以自己画。
+     * 交互和定位参考 @copylee/dsh-computer-use 的 Select（已验证可用）。
+     */
+    const selectCss = `
+.pg-select{box-sizing:border-box;width:100%;height:36px;padding:0 12px;display:flex;align-items:center;gap:8px;text-align:left;border:1px solid var(--dsw-alias-border-l4,rgba(127,127,127,.3));border-radius:var(--dsw-radius-md,8px);background:var(--dsw-alias-bg-layer-3,transparent);color:inherit;font:inherit;font-size:13px;cursor:pointer}
+.pg-select:hover{border-color:var(--dsw-alias-border-l3,#888)}
+.pg-select:focus-visible,.pg-select[aria-expanded=true]{outline:2px solid var(--cl-accent,#D97757);outline-offset:2px}
+.pg-select:disabled{opacity:.5;cursor:default}
+.pg-menu{position:fixed;z-index:1100;box-sizing:border-box;padding:4px;overflow-y:auto;overscroll-behavior:contain;border-radius:var(--dsw-radius-lg,12px);background:var(--dsw-menu-surface-fill,var(--dsw-alias-bg-layer-1,#fff));color:var(--dsw-alias-label-primary,#222);backdrop-filter:var(--dsw-menu-backdrop-filter,none);box-shadow:var(--dsw-elevation-prominent,0 10px 32px rgba(0,0,0,.16),0 0 0 .5px rgba(0,0,0,.1))}
+.pg-option{display:flex;align-items:center;gap:8px;min-height:34px;padding:6px 8px;box-sizing:border-box;border-radius:var(--dsw-radius-md,8px);font-size:13px;line-height:20px;cursor:pointer;user-select:none}
+.pg-option[data-active=true]{background:var(--dsw-alias-interactive-bg-hover,rgba(127,127,127,.12))}
+`
+
+    function Select({ options, value, disabled, label, onChange }) {
+      const id = react.useId()
+      const trigger = react.useRef(null)
+      const list = react.useRef(null)
+      const [open, setOpen] = react.useState(false)
+      const [active, setActive] = react.useState(0)
+      const [pos, setPos] = react.useState({})
+      const selected = options.findIndex((option) => option.value === value)
+      const place = react.useCallback(() => {
+        const r = trigger.current?.getBoundingClientRect()
+        if (!r) return
+        const below = window.innerHeight - r.bottom - 12
+        const above = r.top - 12
+        const up = below < Math.min(options.length * 34 + 8, 220) && above > below
+        const width = Math.min(Math.max(r.width, 180), 440, window.innerWidth - 16)
+        setPos({
+          left: Math.max(8, Math.min(r.left, window.innerWidth - width - 8)),
+          width,
+          maxHeight: Math.max(0, Math.min(360, (up ? above : below) - 4)),
+          ...(up ? { bottom: window.innerHeight - r.top + 4 } : { top: r.bottom + 4 }),
+        })
+      }, [options.length])
+      const close = (refocus = false) => {
+        setOpen(false)
+        if (refocus) trigger.current?.focus()
+      }
+      const choose = (index) => {
+        if (!disabled && options[index]) onChange(options[index].value)
+        close(true)
+      }
+      const show = () => {
+        if (!disabled) {
+          place()
+          setActive(Math.max(0, selected))
+          setOpen(true)
+        }
+      }
+      react.useEffect(() => { if (disabled) setOpen(false) }, [disabled])
+      react.useEffect(() => {
+        if (!open) return
+        const pointer = (e) => {
+          if (!list.current?.contains(e.target) && !trigger.current?.contains(e.target)) setOpen(false)
+        }
+        const scroll = (e) => { if (!list.current?.contains(e.target)) place() }
+        document.addEventListener('pointerdown', pointer, true)
+        window.addEventListener('scroll', scroll, true)
+        window.addEventListener('resize', place)
+        return () => {
+          document.removeEventListener('pointerdown', pointer, true)
+          window.removeEventListener('scroll', scroll, true)
+          window.removeEventListener('resize', place)
+        }
+      }, [open, place])
+      react.useEffect(() => {
+        list.current?.querySelector(`[data-index="${active}"]`)?.scrollIntoView({ block: 'nearest' })
+      }, [active, open])
+
+      return h('div', { style: { minWidth: 0 } },
+        h('button', {
+          ref: trigger,
+          type: 'button',
+          className: 'pg-select',
+          disabled,
+          role: 'combobox',
+          'aria-label': label,
+          'aria-haspopup': 'listbox',
+          'aria-expanded': open,
+          'aria-controls': open ? `${id}-list` : undefined,
+          'aria-activedescendant': open ? `${id}-${active}` : undefined,
+          onBlur: () => close(),
+          onClick: () => (open ? close() : show()),
+          onKeyDown: (e) => {
+            if (disabled) return
+            if (!open) {
+              if (['ArrowDown', 'ArrowUp', 'Enter', ' '].includes(e.key)) {
+                e.preventDefault()
+                show()
+              }
+            } else if (e.key === 'Escape') {
+              e.preventDefault()
+              close(true)
+            } else if (e.key === 'Tab') close()
+            else if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(e.key)) {
+              e.preventDefault()
+              setActive((i) => (e.key === 'Home' ? 0 : e.key === 'End' ? options.length - 1 : (i + (e.key === 'ArrowDown' ? 1 : -1) + options.length) % options.length))
+            } else if (['Enter', ' '].includes(e.key)) {
+              e.preventDefault()
+              choose(active)
+            }
+          },
+        },
+        h('span', {
+          style: { flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+        }, options[selected]?.label),
+        h('svg', {
+          width: 14,
+          height: 14,
+          viewBox: '0 0 16 16',
+          'aria-hidden': true,
+          style: { transform: open ? 'rotate(180deg)' : undefined },
+        }, h('path', { d: 'M4 6l4 4 4-4', fill: 'none', stroke: 'currentColor', strokeWidth: 1.6 }))),
+        open ? h('div', {
+          ref: list,
+          id: `${id}-list`,
+          role: 'listbox',
+          'aria-label': label,
+          className: 'pg-menu',
+          style: pos,
+        }, ...options.map((option, i) => h('div', {
+          key: option.value,
+          id: `${id}-${i}`,
+          role: 'option',
+          'aria-selected': i === selected,
+          'data-index': i,
+          'data-active': i === active,
+          className: 'pg-option',
+          onPointerMove: () => setActive(i),
+          onPointerDown: (e) => e.preventDefault(),
+          onClick: () => choose(i),
+        }, h('span', { style: { flex: 1 } }, option.label),
+        h('span', { style: { width: 14 } }, i === selected ? h('svg', {
+          width: 14,
+          height: 14,
+          viewBox: '0 0 16 16',
+          'aria-hidden': true,
+        }, h('path', {
+          d: 'M3.5 8.5 6.5 11.5 12.5 4.5',
+          fill: 'none',
+          stroke: 'currentColor',
+          strokeWidth: 1.7,
+          strokeLinecap: 'round',
+          strokeLinejoin: 'round',
+        })) : null)))) : null)
+    }
+
     const S = {
       root: { display: 'flex', flexDirection: 'column', gap: '12px', maxWidth: '760px' },
       h2: { margin: '0', fontSize: '18px', fontWeight: 600 },
@@ -211,6 +360,7 @@ window.__ModuleLoader__.load({
       }
 
       return h('div', { style: S.root },
+        h('style', null, selectCss),
         h('h2', { style: S.h2 }, '人格'),
         h('p', { style: S.intro }, '同一时刻只有一份灵魂被服务；切换就是两份灵魂的目录对调，下一条消息起生效。'),
         error ? h('div', { style: S.error }, error) : null,
@@ -229,16 +379,14 @@ window.__ModuleLoader__.load({
         h('div', { style: S.card },
           h('div', { style: S.cardTitle }, '灵魂切换'),
           h('div', { style: S.row },
-            // 不用原生 select：它的下拉弹层由系统绘制，Chromium 会忽略 option 的背景色，
-            // 深色主题下总是一片白。改成按钮组，样式和主题完全由我们控制。
-            h('div', { style: { display: 'flex', flexWrap: 'wrap', gap: '6px' } },
-              options.map((option) => h('button', {
-                key: option.value,
-                type: 'button',
-                style: option.value === state.current ? S.btnPrimary : S.btn,
-                disabled: busy || state.disabled,
-                onClick: () => switchTo(option.value),
-              }, option.label))),
+            // 自绘下拉（见 Select 组件）：原生 select 的下拉弹层系统绘制、深色主题下必白底
+            h(Select, {
+              options,
+              value: state.current,
+              disabled: busy || state.disabled,
+              label: '切换灵魂',
+              onChange: (name) => switchTo(name),
+            }),
             h('span', { style: S.muted }, others.length === 0 ? '还没有其他灵魂' : `共 ${others.length + 1} 份灵魂`),
           ),
           h('div', { style: S.row },
